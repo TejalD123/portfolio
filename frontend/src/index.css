@@ -1,0 +1,148 @@
+@import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #FFF4F4;
+  --bg-alt: #FFFFFF;
+  --card: #FFFFFF;
+  --card-border: rgba(44, 44, 44, 0.08);
+  --text-primary: #2C2C2C;
+  --text-secondary: #6b5b61;
+  --text-muted: #8f7f85;
+  --nav-bg: rgba(255, 255, 255, 0.6);
+  --accent: #853953;
+  --accent-2: #612D53;
+  --pill-bg: rgba(44, 44, 44, 0.05);
+  --pill-border: rgba(44, 44, 44, 0.12);
+}
+
+.dark {
+  --bg: #121012;
+  --bg-alt: #17141a;
+  --card: #1c181d;
+  --card-border: rgba(255, 255, 255, 0.07);
+  --text-primary: #F3F4F4;
+  --text-secondary: #b6acb0;
+  --text-muted: #8a8087;
+  --nav-bg: rgba(18, 16, 18, 0.55);
+  --accent: #e08bab;
+  --accent-2: #a8527d;
+  --pill-bg: rgba(255, 255, 255, 0.05);
+  --pill-border: rgba(255, 255, 255, 0.1);
+}
+
+* {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text-primary);
+  font-family: "Inter", sans-serif;
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: "Sora", sans-serif;
+}
+
+::selection {
+  background: var(--accent);
+  color: #fff;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--accent-2);
+  border-radius: 8px;
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Single source of truth for side margins on every section */
+.container-page {
+  max-width: 1380px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+@media (min-width: 768px) {
+  .container-page {
+    padding-left: 3rem;
+    padding-right: 3rem;
+  }
+}
+@media (min-width: 1280px) {
+  .container-page {
+    padding-left: 4rem;
+    padding-right: 4rem;
+  }
+}
+
+/* Same vertical spacing for every section on the home page */
+.section-y {
+  padding-top: 4.5rem;
+  padding-bottom: 4.5rem;
+}
+@media (min-width: 768px) {
+  .section-y {
+    padding-top: 6rem;
+    padding-bottom: 6rem;
+  }
+}
+
+.eyebrow {
+  color: var(--accent);
+  letter-spacing: 0.2em;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.card-surface {
+  background-color: var(--card);
+  border: 1px solid var(--card-border);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.glass-nav {
+  background-color: var(--nav-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.pill-btn {
+  background-color: var(--pill-bg);
+  border: 1px solid var(--pill-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
