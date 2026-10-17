@@ -62,7 +62,9 @@ const toCloudinary = async (req, res, next) => {
     );
     next();
   } catch (err) {
-    next(err);
+    // Cloudinary errors are plain objects (no stack), so wrap them to get a clear message in the logs
+    console.error("Cloudinary upload failed:", err?.message || err);
+    next(new Error(`Cloudinary: ${err?.message || "upload failed"}`));
   }
 };
 
