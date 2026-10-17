@@ -5,7 +5,7 @@ const prepareBody = (req) => {
   if (typeof body.techStack === "string") {
     body.techStack = body.techStack.split(",").map((t) => t.trim()).filter(Boolean);
   }
-  if (req.file) body.coverImage = `/uploads/projects/${req.file.filename}`;
+  if (req.file) body.coverImage = req.file.cloudUrl;
   return body;
 };
 

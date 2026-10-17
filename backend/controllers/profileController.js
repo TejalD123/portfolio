@@ -81,10 +81,10 @@ const buildBody = (req) => {
   }
 
   if (req.files?.resume?.[0]) {
-    body.resumeUrl = `/uploads/resume/${req.files.resume[0].filename}`;
+    body.resumeUrl = req.files.resume[0].cloudUrl;
   }
   if (req.files?.profileImage?.[0]) {
-    body.profileImage = `/uploads/projects/${req.files.profileImage[0].filename}`;
+    body.profileImage = req.files.profileImage[0].cloudUrl;
   } else if (body.removeProfileImage === "true" || body.removeProfileImage === true) {
     // "Remove photo" was clicked and no new photo was chosen
     body.profileImage = "";

@@ -22,7 +22,7 @@ const prepareBody = (req) => {
   if (body.isCurrent === true || body.isCurrent === "true") body.endDate = "";
   if (body.type && body.type !== "Job") body.yearsOfExperience = "";
 
-  if (req.file) body.logo = `/uploads/projects/${req.file.filename}`;
+  if (req.file) body.logo = req.file.cloudUrl;
   return body;
 };
 

@@ -85,10 +85,10 @@ const createProject = async (req, res) => {
 
     if (req.files) {
       if (req.files.thumbnail && req.files.thumbnail[0]) {
-        body.thumbnail = `/uploads/projects/${req.files.thumbnail[0].filename}`;
+        body.thumbnail = req.files.thumbnail[0].cloudUrl;
       }
       if (req.files.images) {
-        body.images = req.files.images.map((f) => `/uploads/projects/${f.filename}`);
+        body.images = req.files.images.map((f) => f.cloudUrl);
       }
     }
 
@@ -122,10 +122,10 @@ const updateProject = async (req, res) => {
 
     if (req.files) {
       if (req.files.thumbnail && req.files.thumbnail[0]) {
-        body.thumbnail = `/uploads/projects/${req.files.thumbnail[0].filename}`;
+        body.thumbnail = req.files.thumbnail[0].cloudUrl;
       }
       if (req.files.images) {
-        body.images = req.files.images.map((f) => `/uploads/projects/${f.filename}`);
+        body.images = req.files.images.map((f) => f.cloudUrl);
       }
     }
 
