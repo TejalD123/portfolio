@@ -1,5 +1,8 @@
 import api from "./axios";
 
+// ---------- Home (profile + projects + experience + case studies in ONE request) ----------
+export const getHome = (config) => api.get("/home", config);
+
 // ---------- Projects ----------
 export const getProjects = () => api.get("/projects");
 export const getProjectById = (id) => api.get(`/projects/${id}`);
