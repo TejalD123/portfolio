@@ -18,10 +18,17 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Cloudinary images: ask for the smallest good format (WebP/AVIF) and automatic quality.
+// Only touches versioned image URLs that have no transformation yet. Resume PDFs ("/raw/upload/") are left alone.
+const optimizeCloudinary = (url) =>
+  url.includes("res.cloudinary.com") && /\/image\/upload\/v\d+\//.test(url)
+    ? url.replace("/image/upload/", "/image/upload/f_auto,q_auto/")
+    : url;
+
 // Helper to turn a relative uploads path from the backend into a full URL
 export const fileUrl = (path) => {
   if (!path) return "";
-  if (path.startsWith("http")) return path;
+  if (path.startsWith("http")) return optimizeCloudinary(path);
   return `${API_BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
 };
 
