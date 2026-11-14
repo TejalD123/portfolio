@@ -9,22 +9,40 @@ import Experience from "../components/Experience.jsx";
 import CaseStudies from "../components/CaseStudies.jsx";
 import Footer from "../components/Footer.jsx";
 import SplashScreen from "../components/SplashScreen.jsx";
-import { getProfile, getProjects, getExperiences, getCaseStudies } from "../api/endpoints.js";
+import {
+  getHome,
+  getProfile,
+  getProjects,
+  getExperiences,
+  getCaseStudies,
+} from "../api/endpoints.js";
 import { fileUrl } from "../api/axios.js";
 
-const MIN_SPLASH_MS = 900; // avoid a flash when the data loads instantly
-const RETRY_MS = 3000; // wait before asking the server again
-const ATTEMPT_TIMEOUT_MS = 15000; // give up on one attempt after this long and try again
-const MAX_WAIT_MS = 30000; // after this the splash shows "couldn't reach the server" + Try again
+const CACHE_KEY = "td-home-cache-v1";
+const MIN_SPLASH_MS = 400; // avoid a flash when the data loads instantly
+const RETRY_MS = 2000; // wait before asking the server again
+const ATTEMPT_TIMEOUT_MS = 25000; // one request may take this long (free hosting needs time to wake up)
+const MAX_WAIT_MS = 75000; // after this the splash shows "couldn't reach the server" + Try again
+const IMAGE_WAIT_MS = 1000; // never hold the splash for the profile photo longer than this
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Profile and projects are required: the server must answer them (a 404 "no profile yet" counts).
-const essentialOk = (r) =>
-  r.status === "fulfilled" || (r.reason?.response && r.reason.response.status < 500);
-// Experience and case studies only need the server to answer. If one of them errors
-// (e.g. a 500), that section just stays hidden instead of blocking the whole site.
-const answered = (r) => r.status === "fulfilled" || Boolean(r.reason?.response);
+// ---- Local cache: the last successful data is shown instantly on the next visit ----
+const readCache = () => {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+const writeCache = (data) => {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+  } catch {
+    /* storage full / blocked: ignore */
+  }
+};
 
 // Resolve once the image is loaded (or failed / took too long)
 const preloadImage = (src) =>
@@ -34,64 +52,106 @@ const preloadImage = (src) =>
     img.onload = resolve;
     img.onerror = resolve;
     img.src = src;
-    setTimeout(resolve, 4000);
+    setTimeout(resolve, IMAGE_WAIT_MS);
   });
 
+// Old fallback (used only if the backend doesn't have /api/home yet):
+// profile and projects are required (a 404 "no profile yet" counts as an answer).
+const essentialOk = (r) =>
+  r.status === "fulfilled" || (r.reason?.response && r.reason.response.status < 500);
+const answered = (r) => r.status === "fulfilled" || Boolean(r.reason?.response);
+
+const fetchSeparately = async () => {
+  const [profileRes, projectsRes, expRes, caseRes] = await Promise.allSettled([
+    getProfile(),
+    getProjects(),
+    getExperiences(),
+    getCaseStudies(),
+  ]);
+  if (!(essentialOk(profileRes) && essentialOk(projectsRes) && answered(expRes) && answered(caseRes))) {
+    throw new Error("Server not reachable");
+  }
+  const ok = (r) => r.status === "fulfilled";
+  return {
+    profile: ok(profileRes) ? profileRes.value.data?.data || null : null,
+    projects: ok(projectsRes) ? projectsRes.value.data?.data || [] : [],
+    experiences: ok(expRes) ? expRes.value.data?.data || [] : [],
+    caseStudies: ok(caseRes) ? caseRes.value.data?.data || [] : [],
+  };
+};
+
+// One request for everything (GET /api/home). Falls back to the 4 old calls on a 404.
+const fetchAll = async () => {
+  try {
+    const res = await getHome({ timeout: ATTEMPT_TIMEOUT_MS });
+    const d = res.data?.data || {};
+    return {
+      profile: d.profile || null,
+      projects: d.projects || [],
+      experiences: d.experiences || [],
+      caseStudies: d.caseStudies || [],
+    };
+  } catch (err) {
+    if (err?.response?.status === 404) return fetchSeparately();
+    throw err;
+  }
+};
+
 export default function Home() {
-  const [profile, setProfile] = useState(null);
-  const [projects, setProjects] = useState([]);
-  const [experiences, setExperiences] = useState([]);
-  const [caseStudies, setCaseStudies] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const cached = useRef(readCache()); // data from the last visit, if any
+  const hasCache = Boolean(cached.current);
+
+  const [profile, setProfile] = useState(cached.current?.profile ?? null);
+  const [projects, setProjects] = useState(cached.current?.projects ?? []);
+  const [experiences, setExperiences] = useState(cached.current?.experiences ?? []);
+  const [caseStudies, setCaseStudies] = useState(cached.current?.caseStudies ?? []);
+  const [loading, setLoading] = useState(!hasCache); // cached visit: no splash at all
   const [retrying, setRetrying] = useState(false);
   const [failed, setFailed] = useState(false);
   const [run, setRun] = useState(0);
   const location = useLocation();
   const entry = useRef(location); // how this page was opened
 
-  // The site stays on the splash screen until the server has answered for the data.
-  // If the backend is down it keeps retrying, and after MAX_WAIT_MS it shows a Try again button.
+  // - Returning visitor: the site shows instantly from cache and refreshes quietly in the background.
+  // - First visit: splash until ONE request (/api/home) answers. If the server is down it keeps
+  //   retrying, and after MAX_WAIT_MS it shows a Try again button.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const started = Date.now();
       while (!cancelled) {
-        const results = await Promise.race([
-          Promise.allSettled([getProfile(), getProjects(), getExperiences(), getCaseStudies()]),
-          wait(ATTEMPT_TIMEOUT_MS).then(() => null),
-        ]);
+        try {
+          const data = await fetchAll();
+          if (cancelled) return;
 
-        if (results) {
-          const [profileRes, projectsRes, expRes, caseRes] = results;
-          if (essentialOk(profileRes) && essentialOk(projectsRes) && answered(expRes) && answered(caseRes)) {
-            const ok = (r) => r.status === "fulfilled";
+          setProfile(data.profile);
+          setProjects(data.projects);
+          setExperiences(data.experiences);
+          setCaseStudies(data.caseStudies);
+          if (data.profile) writeCache(data);
 
-            const profileData = ok(profileRes) ? profileRes.value.data?.data || null : null;
-            setProfile(profileData);
-            if (ok(projectsRes)) setProjects(projectsRes.value.data?.data || []);
-            if (ok(expRes)) setExperiences(expRes.value.data?.data || []);
-            if (ok(caseRes)) setCaseStudies(caseRes.value.data?.data || []);
-
-            // Profile photo too, so the hero doesn't pop in after the splash
-            if (profileData?.profileImage) await preloadImage(fileUrl(profileData.profileImage));
+          if (!hasCache) {
+            // Profile photo too (but only briefly), so the hero doesn't pop in after the splash
+            if (data.profile?.profileImage) await preloadImage(fileUrl(data.profile.profileImage));
             await wait(Math.max(0, MIN_SPLASH_MS - (Date.now() - started)));
             if (!cancelled) setLoading(false);
+          }
+          return;
+        } catch {
+          if (cancelled) return;
+          if (Date.now() - started > MAX_WAIT_MS) {
+            if (!hasCache) setFailed(true); // with a cache the old data simply stays on screen
             return;
           }
+          if (!hasCache) setRetrying(true);
+          await wait(RETRY_MS);
         }
-
-        if (Date.now() - started > MAX_WAIT_MS) {
-          if (!cancelled) setFailed(true);
-          return;
-        }
-        if (!cancelled) setRetrying(true);
-        await wait(RETRY_MS);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [run]);
+  }, [run, hasCache]);
 
   const retry = () => {
     setFailed(false);
